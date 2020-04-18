@@ -1,0 +1,149 @@
+
+
+using Xunit;
+using System;
+using System.Linq;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Chrome;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Text.RegularExpressions;
+
+/*
+ !!! Do not create your own WebDriver. !!!
+
+You can copy credentials from here:
+- login@codility.com  password
+- unknown@codility.com password
+*/
+
+namespace ArgsProblem.Tests
+{
+    public class LoginPageTest : WebDriverTestCase
+    {
+        public LoginPageTest(DriverFixture fixture) : base(fixture) {}
+
+        
+        
+        //1)Test for login form present or not
+        [Fact]
+        public void testLoginFormPresent()
+        {
+            IReadOnlyCollection<IWebElement> elements = driver.FindElements(By.Id("email-input"));
+            Assert.True(elements.Count == 1);
+            elements = driver.FindElements(By.Id("password-input"));
+            Assert.True(elements.Count > 0);
+            elements = driver.FindElements(By.Id("login-button"));
+            Assert.True(elements.Count > 0);
+        }
+        
+        
+        //2) Check if the given  valid credentials work
+        [Fact]
+        public void testValidCredentials()
+        {
+			var emailInput = driver.FindElement(By.Id("email-input"));
+            emailInput.Click();
+            emailInput.SendKeys("login@codility.com");
+            driver.FindElement(By.Id("password-input")).Click();
+            driver.FindElement(By.Id("password-input")).SendKeys("password");
+            driver.FindElement(By.Id("login-button")).Click();
+
+            IWebElement success_element = driver.FindElement(By.CssSelector(".message.success"));
+            Assert.Equal(success_element.Text, "Welcome to Codility");
+        }
+        
+        
+         
+        //3) Check if given Wrong credentials work
+        [Fact]
+        public void testWrongCredentials()
+        {
+            driver.FindElement(By.Id("email-input")).Click();
+            driver.FindElement(By.Id("email-input")).SendKeys("unknown@codility.com");
+            driver.FindElement(By.Id("password-input")).Click();
+            driver.FindElement(By.Id("password-input")).SendKeys("password");
+            driver.FindElement(By.Id("login-button")).Click();
+
+            IWebElement error_element = driver.FindElement(By.CssSelector(".message.error"));
+            Assert.Equal(error_element.Text, "You shall not pass! Arr!");
+        }
+        
+        //4) Check if the E-mail Validation is working
+        [Theory]
+        [InlineData("invalid.email")]
+        [InlineData("j.@codility.com")]
+        [InlineData("j..s@codility.com")]
+        [InlineData("js*@codility.com")]
+        [InlineData("js@codility..com")]
+		[InlineData("valid.address@gmail.com")]
+        public void testEmailInvalid(string emailAddress)
+        {
+            driver.FindElement(By.Id("email-input")).Click();
+            driver.FindElement(By.Id("email-input")).SendKeys(emailAddress);
+            driver.FindElement(By.Id("password-input")).Click();
+            driver.FindElement(By.Id("password-input")).SendKeys("password");
+
+            driver.FindElement(By.Id("login-button")).Click();
+
+            // this regex is from here: https://docs.microsoft.com/en-us/dotnet/standard/base-types/how-to-verify-that-strings-are-in-valid-email-format
+            bool isValid = Regex.IsMatch(emailAddress,
+                @"^(?("")("".+?(?<!\\)""@)|(([0-9a-z]((\.(?!\.))|[-!#\$%&'\*\+/=\?\^`\{\}\|~\w])*)(?<=[0-9a-z])@))" +
+                @"(?(\[)(\[(\d{1,3}\.){3}\d{1,3}\])|(([0-9a-z][-0-9a-z]*[0-9a-z]*\.)+[a-z0-9][\-a-z0-9]{0,22}[a-z0-9]))$",
+                RegexOptions.IgnoreCase);
+
+			IWebElement Validationerror_element = driver.FindElement(By.CssSelector(".validation.error"));
+
+            if(isValid){
+                Assert.Null(Validationerror_element);
+            } else {
+
+                Assert.Equal(Validationerror_element.Text, "Enter a valid email");
+            }
+        }
+
+
+        //5.1) Check for empty credentials
+        [Fact]
+        public void testBothEmptyCredentials()
+        {
+            driver.FindElement(By.Id("login-button")).Click();
+
+            IReadOnlyCollection<IWebElement> elements = driver.FindElements(By.CssSelector(".validation.error"));
+            Assert.True(elements.Count == 2);
+            Assert.Equal(elements.First().Text, "Email is required");
+            Assert.Equal(elements.Last().Text, "Password is required");
+        }
+
+        //5.2) Check for empty email address
+        [Fact]
+        public void testEmailEmptyCredentials()
+        {
+            driver.FindElement(By.Id("password-input")).Click();
+            driver.FindElement(By.Id("password-input")).SendKeys("password");
+
+            driver.FindElement(By.Id("login-button")).Click();
+
+            IReadOnlyCollection<IWebElement> elements = driver.FindElements(By.CssSelector(".validation.error"));
+
+            Assert.True(elements.Count == 1);
+            Assert.Equal(elements.First().Text, "Email is required");
+        }        
+        
+        //5.3) Check for empty password
+        [Fact]
+        public void testPasswordEmptyCredentials()
+        {
+            driver.FindElement(By.Id("email-input")).Click();
+            driver.FindElement(By.Id("email-input")).SendKeys("login@codility.com");
+
+            driver.FindElement(By.Id("login-button")).Click();
+
+            IReadOnlyCollection<IWebElement> elements = driver.FindElements(By.CssSelector(".validation.error"));
+
+            Assert.True(elements.Count == 1);
+            Assert.Equal(elements.Last().Text, "Password is required");
+        }     
+        
+    } 
+}
